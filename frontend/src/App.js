@@ -2,8 +2,15 @@ import React, { useState, useEffect, createContext, useContext } from 'react';
 import './App.css';
 import axios from 'axios';
 
+// Ensure BACKEND_URL is correctly set in your environment
+// For local development, it might be something like:
+// REACT_APP_BACKEND_URL=http://localhost:8000
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
+// *** IMPORTANT: Configure Axios to send cookies with cross-origin requests ***
+// This is crucial for Django's session-based authentication to work across domains/ports.
+axios.defaults.withCredentials = true;
 
 // Auth Context
 const AuthContext = createContext();
@@ -14,75 +21,103 @@ const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // This effect runs once when the component mounts and whenever 'token' changes.
+    // It tries to fetch user data if a token exists in local storage.
     if (token) {
+      // Set the Authorization header for all subsequent Axios requests
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       fetchUser();
+    } else {
+      // If no token, ensure user is null and auth header is cleared
+      setUser(null);
+      delete axios.defaults.headers.common['Authorization'];
     }
-  }, [token]);
+  }, [token]); // Dependency array: re-run if token changes
 
   const fetchUser = async () => {
     try {
-      const response = await axios.get(`${API}/auth/me`);
-      setUser(response.data);
+      // Fetch current user details from the backend.
+      // Ensure trailing slash for consistency with Django's APPEND_SLASH setting.
+      const response = await axios.get(`${API}/auth/me/`);
+      setUser(response.data); // Set user data if successful
     } catch (error) {
+      console.error("Error fetching user:", error);
+      // If fetching user fails (e.g., token expired or invalid), log out
       logout();
     }
   };
 
   const login = async (email, password) => {
-    setLoading(true);
+    setLoading(true); // Set loading state
     try {
-      const response = await axios.post(`${API}/auth/login`, { email, password });
+      // Send login credentials to the backend.
+      // Ensure trailing slash for consistency with Django's APPEND_SLASH setting.
+      const response = await axios.post(`${API}/auth/login/`, { email, password });
+      // Destructure access_token and user data from the response
       const { access_token, user: userData } = response.data;
       
+      // Store the token in local storage
       localStorage.setItem('token', access_token);
-      setToken(access_token);
-      setUser(userData);
+      setToken(access_token); // Update token state, which triggers fetchUser via useEffect
+      setUser(userData); // Immediately set user data
+      // Set the Authorization header for all subsequent Axios requests
       axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
       
-      return { success: true };
+      return { success: true }; // Indicate success
     } catch (error) {
+      // Handle different types of errors from the backend (e.g., invalid credentials)
+      console.error("Login error:", error.response?.data || error.message);
       return { success: false, error: error.response?.data?.detail || 'Login failed' };
     } finally {
-      setLoading(false);
+      setLoading(false); // Reset loading state
     }
   };
 
   const register = async (email, password, name, role = 'customer') => {
-    setLoading(true);
+    setLoading(true); // Set loading state
     try {
-      const response = await axios.post(`${API}/auth/register`, {
+      // Send registration details to the backend.
+      // Ensure trailing slash for consistency with Django's APPEND_SLASH setting.
+      const response = await axios.post(`${API}/auth/register/`, { 
         email, password, name, role
       });
+      // Destructure access_token and user data from the response
       const { access_token, user: userData } = response.data;
       
+      // Store the token in local storage
       localStorage.setItem('token', access_token);
-      setToken(access_token);
-      setUser(userData);
+      setToken(access_token); // Update token state, which triggers fetchUser via useEffect
+      setUser(userData); // Immediately set user data
+      // Set the Authorization header for all subsequent Axios requests
       axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
       
-      return { success: true };
+      return { success: true }; // Indicate success
     } catch (error) {
+      // Handle registration errors
+      console.error("Registration error:", error.response?.data || error.message);
       return { success: false, error: error.response?.data?.detail || 'Registration failed' };
     } finally {
-      setLoading(false);
+      setLoading(false); // Reset loading state
     }
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    setToken(null);
-    setUser(null);
+    localStorage.removeItem('token'); // Remove token from local storage
+    setToken(null); // Clear token state
+    setUser(null); // Clear user state
+    // Remove the Authorization header from Axios defaults
     delete axios.defaults.headers.common['Authorization'];
   };
 
   return (
+    // Provide auth context values to children components
     <AuthContext.Provider value={{ user, login, register, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
+// Custom hook to easily access auth context values
 const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -91,7 +126,12 @@ const useAuth = () => {
   return context;
 };
 
-// Components
+// Header Component
+// App.js (snippet)
+
+// ... (other imports and code) ...
+
+// Header Component
 const Header = () => {
   const { user, logout } = useAuth();
 
@@ -106,10 +146,10 @@ const Header = () => {
             <h1 className="text-2xl font-bold text-gray-900">Mealy</h1>
           </div>
           
-          {user && (
+          {user && ( // Only show logout and user info if a user is logged in
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">
-                Hello, {user.name} ({user.role})
+                Hello, {user.name} {/* REMOVED: ({user.role}) */}
               </span>
               <button
                 onClick={logout}
@@ -125,20 +165,23 @@ const Header = () => {
   );
 };
 
+// ... (rest of your App.js code) ...
+
+// Login/Registration Form Component
 const LoginForm = () => {
   const { login, register, loading } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(true); // Toggle between login and register forms
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     name: '',
-    role: 'customer'
+    role: 'customer' // Default role for registration
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState(''); // State for displaying errors
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError(''); // Clear previous errors on new submission
 
     let result;
     if (isLogin) {
@@ -148,7 +191,7 @@ const LoginForm = () => {
     }
 
     if (!result.success) {
-      setError(result.error);
+      setError(result.error); // Set error message if login/register failed
     }
   };
 
@@ -169,16 +212,17 @@ const LoginForm = () => {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
-            {error && (
+            {error && ( // Display error message if present
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
                 {error}
               </div>
             )}
 
-            {!isLogin && (
+            {!isLogin && ( // Name field only for registration
               <div>
-                <label className="block text-sm font-medium text-gray-700">Name</label>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
                 <input
+                  id="name"
                   type="text"
                   required
                   className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
@@ -190,8 +234,9 @@ const LoginForm = () => {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
               <input
+                id="email"
                 type="email"
                 required
                 className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
@@ -202,8 +247,9 @@ const LoginForm = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Password</label>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
               <input
+                id="password"
                 type="password"
                 required
                 className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
@@ -213,10 +259,11 @@ const LoginForm = () => {
               />
             </div>
 
-            {!isLogin && (
+            {!isLogin && ( // Role selection only for registration
               <div>
-                <label className="block text-sm font-medium text-gray-700">Account Type</label>
+                <label htmlFor="role" className="block text-sm font-medium text-gray-700">Account Type</label>
                 <select
+                  id="role"
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm"
                   value={formData.role}
                   onChange={(e) => setFormData({...formData, role: e.target.value})}
@@ -229,7 +276,7 @@ const LoginForm = () => {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading} // Disable button while loading
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50"
             >
               {loading ? 'Processing...' : (isLogin ? 'Sign In' : 'Sign Up')}
@@ -239,7 +286,7 @@ const LoginForm = () => {
               <button
                 type="button"
                 className="font-medium text-orange-600 hover:text-orange-500"
-                onClick={() => setIsLogin(!isLogin)}
+                onClick={() => setIsLogin(!isLogin)} // Toggle between login and register
               >
                 {isLogin ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
               </button>
@@ -251,22 +298,25 @@ const LoginForm = () => {
   );
 };
 
+// Customer Dashboard Component
 const CustomerDashboard = () => {
   const { user } = useAuth();
   const [todaysMenu, setTodaysMenu] = useState([]);
   const [orders, setOrders] = useState([]);
-  const [activeTab, setActiveTab] = useState('menu');
-  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('menu'); // State for active dashboard tab
+  const [loading, setLoading] = useState(false); // Loading state for actions
 
   useEffect(() => {
+    // Fetch menu and orders when component mounts
     fetchTodaysMenu();
     fetchOrders();
   }, []);
 
   const fetchTodaysMenu = async () => {
     try {
-      const response = await axios.get(`${API}/daily-menu/today/menu`);
-      setTodaysMenu(response.data.meals || []);
+      // Fetch today's menu from backend. Ensure trailing slash.
+      const response = await axios.get(`${API}/daily-menu/today/menu/`);
+      setTodaysMenu(response.data.meals || []); // Set menu meals, default to empty array
     } catch (error) {
       console.error('Error fetching menu:', error);
     }
@@ -274,8 +324,9 @@ const CustomerDashboard = () => {
 
   const fetchOrders = async () => {
     try {
-      const response = await axios.get(`${API}/orders`);
-      setOrders(response.data);
+      // Fetch user's orders from backend. Ensure trailing slash.
+      const response = await axios.get(`${API}/orders/`);
+      setOrders(response.data); // Set orders
     } catch (error) {
       console.error('Error fetching orders:', error);
     }
@@ -284,9 +335,10 @@ const CustomerDashboard = () => {
   const placeOrder = async (mealId) => {
     setLoading(true);
     try {
-      await axios.post(`${API}/orders`, { meal_id: mealId, quantity: 1 });
-      await fetchOrders();
-      alert('Order placed successfully!');
+      // Place a new order. Ensure trailing slash.
+      await axios.post(`${API}/orders/`, { meal_id: mealId, quantity: 1 });
+      await fetchOrders(); // Refresh orders list after placing order
+      alert('Order placed successfully!'); // Use a custom modal/toast in production
     } catch (error) {
       alert('Error placing order: ' + (error.response?.data?.detail || 'Unknown error'));
     } finally {
@@ -296,18 +348,19 @@ const CustomerDashboard = () => {
 
   const processPayment = async (orderId) => {
     const phone = prompt('Enter your M-Pesa phone number (254XXXXXXXXX):');
-    if (!phone) return;
+    if (!phone) return; // If user cancels prompt
 
     setLoading(true);
     try {
-      const response = await axios.post(`${API}/payment/mpesa`, {
+      // Initiate M-Pesa payment. Ensure trailing slash.
+      const response = await axios.post(`${API}/payment/mpesa/`, { 
         order_id: orderId,
         phone: phone
       });
       
       if (response.data.success) {
         alert(`Payment successful! Transaction ID: ${response.data.transaction_id}`);
-        await fetchOrders();
+        await fetchOrders(); // Refresh orders after successful payment
       }
     } catch (error) {
       alert('Payment failed: ' + (error.response?.data?.detail || 'Unknown error'));
@@ -349,7 +402,7 @@ const CustomerDashboard = () => {
         </nav>
       </div>
 
-      {activeTab === 'menu' && (
+      {activeTab === 'menu' && ( // Today's Menu Section
         <div>
           {todaysMenu.length === 0 ? (
             <div className="text-center py-12">
@@ -395,7 +448,7 @@ const CustomerDashboard = () => {
         </div>
       )}
 
-      {activeTab === 'orders' && (
+      {activeTab === 'orders' && ( // My Orders Section
         <div>
           {orders.length === 0 ? (
             <div className="text-center py-12">
@@ -449,6 +502,7 @@ const CustomerDashboard = () => {
   );
 };
 
+// Admin Dashboard Component
 const AdminDashboard = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('meals');
@@ -467,6 +521,7 @@ const AdminDashboard = () => {
   const [menuDate, setMenuDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
+    // Fetch data for admin dashboard when component mounts
     fetchMeals();
     fetchOrders();
     fetchDailyRevenue();
@@ -474,7 +529,8 @@ const AdminDashboard = () => {
 
   const fetchMeals = async () => {
     try {
-      const response = await axios.get(`${API}/meals`);
+      // Fetch all meals. Ensure trailing slash.
+      const response = await axios.get(`${API}/meals/`);
       setMeals(response.data);
     } catch (error) {
       console.error('Error fetching meals:', error);
@@ -483,7 +539,8 @@ const AdminDashboard = () => {
 
   const fetchOrders = async () => {
     try {
-      const response = await axios.get(`${API}/orders`);
+      // Fetch all orders. Ensure trailing slash.
+      const response = await axios.get(`${API}/orders/`);
       setOrders(response.data);
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -492,7 +549,8 @@ const AdminDashboard = () => {
 
   const fetchDailyRevenue = async () => {
     try {
-      const response = await axios.get(`${API}/orders/today/revenue`);
+      // Fetch today's revenue. Ensure trailing slash.
+      const response = await axios.get(`${API}/orders/today/revenue/`);
       setDailyRevenue(response.data);
     } catch (error) {
       console.error('Error fetching revenue:', error);
@@ -503,12 +561,13 @@ const AdminDashboard = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post(`${API}/meals`, {
+      // Create a new meal. Ensure trailing slash.
+      await axios.post(`${API}/meals/`, { 
         ...mealForm,
-        price: parseFloat(mealForm.price)
+        price: parseFloat(mealForm.price) // Ensure price is a number
       });
-      setMealForm({ name: '', description: '', price: '', category: '', image_url: '' });
-      await fetchMeals();
+      setMealForm({ name: '', description: '', price: '', category: '', image_url: '' }); // Clear form
+      await fetchMeals(); // Refresh meals list
       alert('Meal created successfully!');
     } catch (error) {
       alert('Error creating meal: ' + (error.response?.data?.detail || 'Unknown error'));
@@ -525,11 +584,12 @@ const AdminDashboard = () => {
 
     setLoading(true);
     try {
-      await axios.post(`${API}/daily-menu`, {
+      // Create a daily menu. Ensure trailing slash.
+      await axios.post(`${API}/daily-menu/`, { 
         date: menuDate,
         meal_ids: selectedMealsForMenu
       });
-      setSelectedMealsForMenu([]);
+      setSelectedMealsForMenu([]); // Clear selected meals
       alert('Daily menu created successfully!');
     } catch (error) {
       alert('Error creating menu: ' + (error.response?.data?.detail || 'Unknown error'));
@@ -541,8 +601,8 @@ const AdminDashboard = () => {
   const toggleMealSelection = (mealId) => {
     setSelectedMealsForMenu(prev => 
       prev.includes(mealId) 
-        ? prev.filter(id => id !== mealId)
-        : [...prev, mealId]
+        ? prev.filter(id => id !== mealId) // Remove if already selected
+        : [...prev, mealId] // Add if not selected
     );
   };
 
@@ -550,7 +610,7 @@ const AdminDashboard = () => {
   const getDefaultImage = (category) => {
     const images = {
       'Main Course': 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwyfHxkZWxpY2lvdXMlMjBmb29kfGVufDB8fHx8MTc1MzIxMjUzN3ww&ixlib=rb-4.1.0&q=85',
-      'Burger': 'https://images.unsplash.com/photo-1600555379885-08a02224726d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHNlYXJjaHwxfHxyZXN0YXVyYW50JTIwbWVhbHN8ZW58MHx8fHwxNzUzMjEyNTU5fDA&ixlib=rb-4.1.0&q=85',
+      'Burger': 'https://images.unsplash.com/photo-1600555379885-08a02224726d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHxyZXN0YXVyYW50JTIwbWVhbHN8ZW58MHx8fHwxNzUzMjEyNTU5fDA&ixlib=rb-4.1.0&q=85',
       'Dessert': 'https://images.unsplash.com/photo-1551024601-bec78aea704b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwxfHxkZWxpY2lvdXMlMjBmb29kfGVufDB8fHx8MTc1MzIxMjUzN3ww&ixlib=rb-4.1.0&q=85',
       'default': 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwyfHxkZWxpY2lvdXMlMjBmb29kfGVufDB8fHx8MTc1MzIxMjUzN3ww&ixlib=rb-4.1.0&q=85'
     };
@@ -632,8 +692,9 @@ const AdminDashboard = () => {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Add New Meal</h3>
             <form onSubmit={handleMealSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Meal Name</label>
+                <label htmlFor="mealName" className="block text-sm font-medium text-gray-700 mb-2">Meal Name</label>
                 <input
+                  id="mealName"
                   type="text"
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500"
@@ -642,8 +703,9 @@ const AdminDashboard = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                <label htmlFor="mealCategory" className="block text-sm font-medium text-gray-700 mb-2">Category</label>
                 <select
+                  id="mealCategory"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                   value={mealForm.category}
                   onChange={(e) => setMealForm({...mealForm, category: e.target.value, image_url: getDefaultImage(e.target.value)})}
@@ -656,8 +718,9 @@ const AdminDashboard = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Price (KSh)</label>
+                <label htmlFor="mealPrice" className="block text-sm font-medium text-gray-700 mb-2">Price (KSh)</label>
                 <input
+                  id="mealPrice"
                   type="number"
                   step="0.01"
                   required
@@ -667,8 +730,9 @@ const AdminDashboard = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Image URL (Optional)</label>
+                <label htmlFor="mealImage" className="block text-sm font-medium text-gray-700 mb-2">Image URL (Optional)</label>
                 <input
+                  id="mealImage"
                   type="url"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                   value={mealForm.image_url}
@@ -676,8 +740,9 @@ const AdminDashboard = () => {
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <label htmlFor="mealDescription" className="block text-sm font-medium text-gray-700 mb-2">Description</label>
                 <textarea
+                  id="mealDescription"
                   required
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500"
@@ -734,8 +799,9 @@ const AdminDashboard = () => {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Create Daily Menu</h3>
           
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Menu Date</label>
+            <label htmlFor="menuDate" className="block text-sm font-medium text-gray-700 mb-2">Menu Date</label>
             <input
+              id="menuDate"
               type="date"
               className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500"
               value={menuDate}
