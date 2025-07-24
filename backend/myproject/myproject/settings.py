@@ -43,7 +43,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "corsheaders.middleware.CorsMiddleware",  # ADDED: Place this high in the list
+    # Place CorsMiddleware at the top of the list for proper handling of preflight requests
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -127,11 +128,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # CORS Settings (ADDED FOR CROSS-ORIGIN REQUESTS)
 # Allows requests from your frontend development server
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3001",  # Adjusted to match your frontend's origin
-    "http://127.0.0.1:3001",  # Adjusted to match your frontend's origin
+    "http://localhost:3000",  # Your frontend's origin
+    "http://127.0.0.1:3000",  # Sometimes 127.0.0.1 is used instead of localhost
 ]
 
-# You can also allow specific origins using regex for more complex cases:
+# If you have specific paths or need more fine-grained control, you can use CORS_ALLOWED_ORIGIN_REGEXES
 # CORS_ALLOWED_ORIGIN_REGEXES = [
 #     r"^https://\w+\.example\.com$",
 # ]
@@ -139,16 +140,17 @@ CORS_ALLOWED_ORIGINS = [
 # IMPORTANT: In production, do NOT use CORS_ALLOW_ALL_ORIGINS = True
 # Only use the specific origins your frontend will be deployed on.
 # For quick local development, you *could* use:
-# CORS_ALLOW_ALL_ORIGINS = True
-# But it's less secure and should be removed/commented out for production.
+# CORS_ALLOW_ALL_ORIGINS = True # Be very careful with this in production!
 
-# *** ADDED: Allow cookies/authentication credentials to be sent cross-origin ***
+# Allow cookies/authentication credentials to be sent cross-origin
+# This is crucial for authentication flows (e.g., sessions, JWTs in cookies)
 CORS_ALLOW_CREDENTIALS = True
 
-# *** ADDED/MODIFIED: Adjust SameSite cookie policy for development if issues persist ***
-# In production, SESSION_COOKIE_SECURE should be True and SameSite might be 'Lax' or 'Strict'
-# but for local dev with HTTP, sometimes None is needed.
+# Adjust SameSite cookie policy for development if issues persist
+# In production, SESSION_COOKIE_SECURE and CSRF_COOKIE_SECURE should be True
+# and SameSite might be 'Lax' or 'Strict'. For local dev with HTTP, sometimes
+# None is needed to allow cookies to be sent cross-site.
 SESSION_COOKIE_SAMESITE = None
-SESSION_COOKIE_SECURE = False # Set to True in production with HTTPS
+SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
 CSRF_COOKIE_SAMESITE = None
-CSRF_COOKIE_SECURE = False # Set to True in production with HTTPS
+CSRF_COOKIE_SECURE = False  # Set to True in production with HTTPS

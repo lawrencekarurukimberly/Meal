@@ -345,7 +345,7 @@ const Carousel3D = ({
 };
 
 // Ensure BACKEND_URL is correctly set in your environment
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
 const API = `${BACKEND_URL}/api`;
 
 // Configure Axios to send cookies with cross-origin requests
@@ -448,7 +448,7 @@ const Header = () => {
   const { user, logout } = useAuth();
 
   return (
-    <header className="bg-white shadow-sm border-b">
+    <header className="bg-white shadow-sm border-b fixed w-full z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-3">
@@ -458,19 +458,26 @@ const Header = () => {
             <h1 className="text-2xl font-bold text-gray-900">Mealy</h1>
           </div>
           
-          {user && (
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
-                Hello, {user.name}
-              </span>
+          <div className="flex items-center space-x-4">
+            {user ? (
+              <>
+                <span className="text-sm text-gray-600">Hello, {user.name}</span>
+                <button
+                  onClick={logout}
+                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
               <button
-                onClick={logout}
-                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                onClick={() => document.getElementById('auth-section').scrollIntoView({ behavior: 'smooth' })}
               >
-                Logout
+                Sign In
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </header>
@@ -519,111 +526,113 @@ const LoginForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="mx-auto w-20 h-20 bg-orange-500 rounded-full flex items-center justify-center">
-          <span className="text-white text-3xl">🍽️</span>
+    <section id="auth-section" className="py-16 bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="mx-auto w-20 h-20 bg-orange-500 rounded-full flex items-center justify-center">
+            <span className="text-white text-3xl">🍽️</span>
+          </div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            {isLogin ? 'Sign In to Mealy' : 'Join Mealy Today'}
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Your favorite food ordering platform
+          </p>
         </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Welcome to Mealy
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Your favorite food ordering platform
-        </p>
-      </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          {showLoader ? (
-            <div className="flex justify-center items-center h-64">
-              <MagicLoader size={100} particleCount={2} speed={1} hueRange={[20, 60]} />
-            </div>
-          ) : (
-            <form className="space-y-6" onSubmit={handleSubmit}>
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                  {error}
-                </div>
-              )}
+        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+            {showLoader ? (
+              <div className="flex justify-center items-center h-64">
+                <MagicLoader size={100} particleCount={2} speed={1} hueRange={[20, 60]} />
+              </div>
+            ) : (
+              <form className="space-y-6" onSubmit={handleSubmit}>
+                {error && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                    {error}
+                  </div>
+                )}
 
-              {!isLogin && (
+                {!isLogin && (
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
+                    <input
+                      id="name"
+                      type="text"
+                      required
+                      className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
+                      placeholder="Enter your name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    />
+                  </div>
+                )}
+
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
                   <input
-                    id="name"
-                    type="text"
+                    id="email"
+                    type="email"
                     required
                     className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
-                    placeholder="Enter your name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    placeholder="Enter your email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({...formData, email: e.target.value})}
                   />
                 </div>
-              )}
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
-                  placeholder="Enter your email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
-                <input
-                  id="password"
-                  type="password"
-                  required
-                  className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
-                  placeholder="Enter your password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
-                />
-              </div>
-
-              {!isLogin && (
                 <div>
-                  <label htmlFor="role" className="block text-sm font-medium text-gray-700">Account Type</label>
-                  <select
-                    id="role"
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm"
-                    value={formData.role}
-                    onChange={(e) => setFormData({...formData, role: e.target.value})}
-                  >
-                    <option value="customer">Customer</option>
-                    <option value="admin">Admin/Caterer</option>
-                  </select>
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+                  <input
+                    id="password"
+                    type="password"
+                    required
+                    className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
+                    placeholder="Enter your password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({...formData, password: e.target.value})}
+                  />
                 </div>
-              )}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50"
-              >
-                {loading ? 'Processing...' : (isLogin ? 'Sign In' : 'Sign Up')}
-              </button>
+                {!isLogin && (
+                  <div>
+                    <label htmlFor="role" className="block text-sm font-medium text-gray-700">Account Type</label>
+                    <select
+                      id="role"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm"
+                      value={formData.role}
+                      onChange={(e) => setFormData({...formData, role: e.target.value})}
+                    >
+                      <option value="customer">Customer</option>
+                      <option value="admin">Admin/Caterer</option>
+                    </select>
+                  </div>
+                )}
 
-              <div className="text-center">
                 <button
-                  type="button"
-                  className="font-medium text-orange-600 hover:text-orange-500"
-                  onClick={() => setIsLogin(!isLogin)}
+                  type="submit"
+                  disabled={loading}
+                  className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50"
                 >
-                  {isLogin ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
+                  {loading ? 'Processing...' : (isLogin ? 'Sign In' : 'Sign Up')}
                 </button>
-              </div>
-            </form>
-          )}
+
+                <div className="text-center">
+                  <button
+                    type="button"
+                    className="font-medium text-orange-600 hover:text-orange-500"
+                    onClick={() => setIsLogin(!isLogin)}
+                  >
+                    {isLogin ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 };
 
@@ -633,7 +642,7 @@ const CustomerDashboard = () => {
   const [todaysMenu, setTodaysMenu] = useState([]);
   const [orders, setOrders] = useState([]);
   const [activeTab, setActiveTab] = useState('menu');
-  const [loadingMeals, setLoadingMeals] = useState({}); // Per-meal loading state
+  const [loadingMeals, setLoadingMeals] = useState({});
 
   useEffect(() => {
     fetchTodaysMenu();
@@ -661,7 +670,6 @@ const CustomerDashboard = () => {
   const placeOrder = async (mealId) => {
     setLoadingMeals(prev => ({ ...prev, [mealId]: true }));
     try {
-      // Ensure minimum loading time of 500ms
       const [response] = await Promise.all([
         axios.post(`${API}/orders/`, { meal_id: mealId, quantity: 1 }),
         new Promise(resolve => setTimeout(resolve, 500))
@@ -700,7 +708,6 @@ const CustomerDashboard = () => {
     }
   };
 
-  // Map todaysMenu to Carousel3D items
   const carouselItems = todaysMenu.map((meal) => ({
     id: meal.id,
     title: meal.name,
@@ -712,7 +719,7 @@ const CustomerDashboard = () => {
   }));
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-gray-900">Welcome back, {user.name}!</h2>
         <p className="text-gray-600">What would you like to eat today?</p>
@@ -936,7 +943,7 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-gray-900">Admin Dashboard</h2>
         <p className="text-gray-600">Manage your restaurant operations</p>
@@ -1239,11 +1246,139 @@ const AdminDashboard = () => {
   );
 };
 
+// Landing Page Component
+const LandingPage = () => {
+  const sampleMenuItems = [
+    {
+      id: 1,
+      title: "Grilled Chicken Supreme",
+      brand: "Main Course",
+      description: "Juicy grilled chicken breast served with herb-roasted vegetables and creamy mashed potatoes.",
+      tags: ["Main Course", "KSh 1200"],
+      imageUrl: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d",
+      isLoading: false
+    },
+    {
+      id: 2,
+      title: "Classic Cheeseburger",
+      brand: "Burger",
+      description: "A delicious beef patty with melted cheddar, fresh lettuce, tomato, and our special sauce.",
+      tags: ["Burger", "KSh 800"],
+      imageUrl: "https://images.unsplash.com/photo-1600555379885-08a02224726d",
+      isLoading: false
+    },
+    {
+      id: 3,
+      title: "Chocolate Lava Cake",
+      brand: "Dessert",
+      description: "Warm chocolate cake with a gooey center, served with vanilla ice cream.",
+      tags: ["Dessert", "KSh 600"],
+      imageUrl: "https://images.unsplash.com/photo-1551024601-bec78aea704b",
+      isLoading: false
+    }
+  ];
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Hero Section */}
+      <section className="bg-orange-500 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex flex-col md:flex-row items-center">
+          <div className="md:w-1/2 mb-8 md:mb-0">
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">Discover Delicious Meals with Mealy</h1>
+            <p className="text-lg mb-6">Order from a curated selection of fresh, flavorful dishes delivered right to your door.</p>
+            <button
+              className="bg-white text-orange-500 px-6 py-3 rounded-md font-medium hover:bg-gray-100 transition-colors"
+              onClick={() => document.getElementById('auth-section').scrollIntoView({ behavior: 'smooth' })}
+            >
+              Get Started
+            </button>
+          </div>
+          <div className="md:w-1/2">
+            <img
+              src="https://images.unsplash.com/photo-1600891964599-f61ba0e24092"
+              alt="Delicious meal"
+              className="w-full h-auto rounded-lg shadow-lg"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">Why Choose Mealy?</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">🍴</span>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Curated Menus</h3>
+              <p className="text-gray-600">Daily menus crafted with fresh ingredients from top local restaurants.</p>
+            </div>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">🚀</span>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Fast Delivery</h3>
+              <p className="text-gray-600">Quick and reliable delivery to satisfy your cravings in no time.</p>
+            </div>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">💳</span>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Secure Payments</h3>
+              <p className="text-gray-600">Easy and secure payment options, including M-Pesa integration.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Menu Section */}
+      <section className="py-16">
+        <Carousel3D
+          items={sampleMenuItems}
+          cardHeight={450}
+          autoRotate={true}
+          rotateInterval={4000}
+          isMobileSwipe={true}
+          placeOrder={() => alert('Please sign in to place an order')}
+        />
+      </section>
+
+      {/* Authentication Section */}
+      <LoginForm />
+
+      {/* Footer */}
+      <footer className="bg-gray-800 text-white py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="mb-4 md:mb-0">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-lg">🍽️</span>
+                </div>
+                <h1 className="text-2xl font-bold">Mealy</h1>
+              </div>
+              <p className="text-sm mt-2">Your favorite food ordering platform</p>
+            </div>
+            <div className="flex space-x-6">
+              <a href="#" className="text-gray-400 hover:text-white">About</a>
+              <a href="#" className="text-gray-400 hover:text-white">Contact</a>
+              <a href="#" className="text-gray-400 hover:text-white">Privacy</a>
+              <a href="#" className="text-gray-400 hover:text-white">Terms</a>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
 const App = () => {
   const { user } = useAuth();
 
   if (!user) {
-    return <LoginForm />;
+    return <LandingPage />;
   }
 
   return (
