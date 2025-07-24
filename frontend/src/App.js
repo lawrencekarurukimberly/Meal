@@ -1,15 +1,354 @@
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState, useEffect, createContext, useContext, useRef, useCallback } from 'react';
 import './App.css';
 import axios from 'axios';
 
+// Utility function for classNames
+const cn = (...classes) => classes.filter(Boolean).join(' ');
+
+// MagicLoader Component
+const MagicLoader = ({
+  size = 200,
+  particleCount = 1,
+  speed = 1,
+  hueRange = [0, 360],
+  className
+}) => {
+  const canvasRef = useRef(null);
+  const animationRef = useRef();
+  const particlesRef = useRef([]);
+  const tickRef = useRef(0);
+  const globalAngleRef = useRef(0);
+  const globalRotationRef = useRef(0);
+
+  const createParticle = useCallback((centerX, centerY, tick, minSize) => {
+    return {
+      radius: 7,
+      x: centerX + Math.cos(tick / 20) * minSize / 2,
+      y: centerY + Math.sin(tick / 20) * minSize / 2,
+      angle: globalRotationRef.current + globalAngleRef.current,
+      speed: 0,
+      accel: 0.01,
+      decay: 0.01,
+      life: 1
+    };
+  }, []);
+
+  const stepParticle = useCallback((particle, index) => {
+    particle.speed += particle.accel;
+    particle.x += Math.cos(particle.angle) * particle.speed * speed;
+    particle.y += Math.sin(particle.angle) * particle.speed * speed;
+    particle.angle += Math.PI / 64;
+    particle.accel *= 1.01;
+    particle.life -= particle.decay;
+
+    if (particle.life <= 0) {
+      particlesRef.current.splice(index, 1);
+    }
+  }, [speed]);
+
+  const drawParticle = useCallback((ctx, particle, index, tick) => {
+    const hue = hueRange[0] + ((tick + (particle.life * 120)) % (hueRange[1] - hueRange[0]));
+    ctx.fillStyle = ctx.strokeStyle = `hsla(${hue}, 100%, 60%, ${particle.life})`;
+    
+    ctx.beginPath();
+    if (particlesRef.current[index - 1]) {
+      ctx.moveTo(particle.x, particle.y);
+      ctx.lineTo(particlesRef.current[index - 1].x, particlesRef.current[index - 1].y);
+    }
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(particle.x, particle.y, Math.max(0.001, particle.life * particle.radius), 0, Math.PI * 2);
+    ctx.fill();
+
+    const sparkleSize = Math.random() * 1.25;
+    const sparkleX = particle.x + ((Math.random() - 0.5) * 35) * particle.life;
+    const sparkleY = particle.y + ((Math.random() - 0.5) * 35) * particle.life;
+    ctx.fillRect(Math.floor(sparkleX), Math.floor(sparkleY), sparkleSize, sparkleSize);
+  }, [hueRange]);
+
+  const animate = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const minSize = Math.min(rect.width, rect.height) * 0.5;
+
+    for (let i = 0; i < particleCount; i++) {
+      particlesRef.current.push(createParticle(centerX, centerY, tickRef.current, minSize));
+    }
+
+    particlesRef.current.forEach((particle, index) => {
+      stepParticle(particle, index);
+    });
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    particlesRef.current.forEach((particle, index) => {
+      drawParticle(ctx, particle, index, tickRef.current);
+    });
+
+    globalRotationRef.current += Math.PI / 6 * speed;
+    globalAngleRef.current += Math.PI / 6 * speed;
+    tickRef.current++;
+
+    animationRef.current = requestAnimationFrame(animate);
+  }, [createParticle, stepParticle, drawParticle, particleCount, speed]);
+
+  const setupCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    canvas.style.width = `${size}px`;
+    canvas.style.height = `${size}px`;
+    
+    ctx.scale(dpr, dpr);
+    ctx.globalCompositeOperation = 'lighter';
+
+    particlesRef.current = [];
+    tickRef.current = 0;
+    globalAngleRef.current = 0;
+    globalRotationRef.current = 0;
+  }, [size]);
+
+  useEffect(() => {
+    setupCanvas();
+    animate();
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [setupCanvas, animate]);
+
+  return (
+    <div className={cn("flex items-center justify-center", className)}>
+      <canvas
+        ref={canvasRef}
+        className="max-w-full max-h-full"
+        style={{
+          width: size,
+          height: size
+        }}
+      />
+    </div>
+  );
+};
+
+// Carousel3D Component
+const Carousel3D = ({
+  items,
+  autoRotate = true,
+  rotateInterval = 4000,
+  cardHeight = 450,
+  title = "Today's Specials",
+  subtitle = "Featured Meals",
+  tagline = "Discover delicious dishes available today, crafted with fresh ingredients to satisfy your cravings.",
+  isMobileSwipe = true,
+  placeOrder
+}) => {
+  const [active, setActive] = useState(0);
+  const carouselRef = useRef(null);
+  const [isInView, setIsInView] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const minSwipeDistance = 50;
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (autoRotate && isInView && !isHovering) {
+      const interval = setInterval(() => {
+        setActive((prev) => (prev + 1) % items.length);
+      }, rotateInterval);
+      return () => clearInterval(interval);
+    }
+  }, [isInView, isHovering, autoRotate, rotateInterval, items.length]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsInView(entry.isIntersecting),
+      { threshold: 0.2 }
+    );
+    if (carouselRef.current) observer.observe(carouselRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const onTouchStart = (e) => {
+    setTouchStart(e.targetTouches[0].clientX);
+    setTouchEnd(null);
+  };
+
+  const onTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    if (distance > minSwipeDistance) {
+      setActive((prev) => (prev + 1) % items.length);
+    } else if (distance < -minSwipeDistance) {
+      setActive((prev) => (prev - 1 + items.length) % items.length);
+    }
+  };
+
+  const getCardAnimationClass = (index) => {
+    if (index === active) return "scale-100 opacity-100 z-20";
+    if (index === (active + 1) % items.length)
+      return "translate-x-[40%] scale-95 opacity-60 z-10";
+    if (index === (active - 1 + items.length) % items.length)
+      return "translate-x-[-40%] scale-95 opacity-60 z-10";
+    return "scale-90 opacity-0";
+  };
+
+  return (
+    <section className="bg-gray-50 min-w-full mx-auto">
+      <div className="w-full px-4 sm:px-6 lg:px-8 max-w-7xl">
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-bold text-gray-900">{title}</h2>
+          <h3 className="text-xl text-gray-600 mt-2">{subtitle}</h3>
+          <p className="text-gray-500 mt-2">{tagline}</p>
+        </div>
+
+        <div
+          className="relative overflow-hidden"
+          style={{ height: `${cardHeight + 50}px` }}
+          onMouseEnter={() => setIsHovering(true)}
+          onMouseLeave={() => setIsHovering(false)}
+          onTouchStart={isMobileSwipe ? onTouchStart : null}
+          onTouchMove={isMobileSwipe ? onTouchMove : null}
+          onTouchEnd={isMobileSwipe ? onTouchEnd : null}
+          ref={carouselRef}
+        >
+          <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
+            {items.map((item, index) => (
+              <div
+                key={item.id}
+                className={`absolute top-0 w-full max-w-md transform transition-all duration-500 ${getCardAnimationClass(index)}`}
+              >
+                <div
+                  className="overflow-hidden bg-white border border-gray-200 shadow-sm hover:shadow-md flex flex-col"
+                  style={{ height: `${cardHeight}px` }}
+                >
+                  <div
+                    className="relative bg-black p-6 flex items-center justify-center h-48 overflow-hidden"
+                    style={{
+                      backgroundImage: `url(${item.imageUrl})`,
+                      backgroundSize: "cover",
+                      backgroundPosition: "center",
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-black/50" />
+                    <div className="relative z-10 text-center text-white">
+                      <h3 className="text-2xl font-bold mb-2">{item.brand.toUpperCase()}</h3>
+                      <div className="w-12 h-1 bg-white mx-auto mb-2" />
+                      <p className="text-sm">{item.title}</p>
+                    </div>
+                  </div>
+
+                  <div className="p-6 flex flex-col flex-grow">
+                    <h3 className="text-xl font-bold mb-1 text-gray-900">{item.title}</h3>
+                    <p className="text-gray-500 text-sm font-medium mb-2">{item.brand}</p>
+                    <p className="text-gray-600 text-sm flex-grow">{item.description}</p>
+
+                    <div className="mt-4">
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {item.tags.map((tag, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2 py-1 bg-gray-50 text-gray-600 rounded-full text-xs"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={() => placeOrder(item.id)}
+                        disabled={item.isLoading}
+                        className="flex items-center justify-center w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-md font-medium transition-colors disabled:opacity-50"
+                      >
+                        {item.isLoading ? (
+                          <div className="flex items-center space-x-2">
+                            <MagicLoader size={20} particleCount={1} speed={1} hueRange={[200, 240]} />
+                            <span>Ordering...</span>
+                          </div>
+                        ) : (
+                          <span>Order Now</span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {!isMobile && (
+            <>
+              <button
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 rounded-full flex items-center justify-center text-gray-500 hover:bg-white z-30 shadow-md transition-all hover:scale-110"
+                onClick={() => setActive((prev) => (prev - 1 + items.length) % items.length)}
+                aria-label="Previous"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 rounded-full flex items-center justify-center text-gray-500 hover:bg-white z-30 shadow-md transition-all hover:scale-110"
+                onClick={() => setActive((prev) => (prev + 1) % items.length)}
+                aria-label="Next"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </>
+          )}
+
+          <div className="absolute bottom-6 left-0 right-0 flex justify-center items-center space-x-3 z-30">
+            {items.map((_, idx) => (
+              <button
+                key={idx}
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                  active === idx ? "bg-gray-500 w-5" : "bg-gray-200 hover:bg-gray-300"
+                }`}
+                onClick={() => setActive(idx)}
+                aria-label={`Go to item ${idx + 1}`}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
 // Ensure BACKEND_URL is correctly set in your environment
-// For local development, it might be something like:
-// REACT_APP_BACKEND_URL=http://localhost:8000
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// *** IMPORTANT: Configure Axios to send cookies with cross-origin requests ***
-// This is crucial for Django's session-based authentication to work across domains/ports.
+// Configure Axios to send cookies with cross-origin requests
 axios.defaults.withCredentials = true;
 
 // Auth Context
@@ -21,103 +360,81 @@ const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // This effect runs once when the component mounts and whenever 'token' changes.
-    // It tries to fetch user data if a token exists in local storage.
     if (token) {
-      // Set the Authorization header for all subsequent Axios requests
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       fetchUser();
     } else {
-      // If no token, ensure user is null and auth header is cleared
       setUser(null);
       delete axios.defaults.headers.common['Authorization'];
     }
-  }, [token]); // Dependency array: re-run if token changes
+  }, [token]);
 
   const fetchUser = async () => {
     try {
-      // Fetch current user details from the backend.
-      // Ensure trailing slash for consistency with Django's APPEND_SLASH setting.
       const response = await axios.get(`${API}/auth/me/`);
-      setUser(response.data); // Set user data if successful
+      setUser(response.data);
     } catch (error) {
       console.error("Error fetching user:", error);
-      // If fetching user fails (e.g., token expired or invalid), log out
       logout();
     }
   };
 
   const login = async (email, password) => {
-    setLoading(true); // Set loading state
+    setLoading(true);
     try {
-      // Send login credentials to the backend.
-      // Ensure trailing slash for consistency with Django's APPEND_SLASH setting.
       const response = await axios.post(`${API}/auth/login/`, { email, password });
-      // Destructure access_token and user data from the response
       const { access_token, user: userData } = response.data;
       
-      // Store the token in local storage
       localStorage.setItem('token', access_token);
-      setToken(access_token); // Update token state, which triggers fetchUser via useEffect
-      setUser(userData); // Immediately set user data
-      // Set the Authorization header for all subsequent Axios requests
+      setToken(access_token);
+      setUser(userData);
       axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
       
-      return { success: true }; // Indicate success
+      return { success: true };
     } catch (error) {
-      // Handle different types of errors from the backend (e.g., invalid credentials)
       console.error("Login error:", error.response?.data || error.message);
       return { success: false, error: error.response?.data?.detail || 'Login failed' };
     } finally {
-      setLoading(false); // Reset loading state
+      setLoading(false);
     }
   };
 
   const register = async (email, password, name, role = 'customer') => {
-    setLoading(true); // Set loading state
+    setLoading(true);
     try {
-      // Send registration details to the backend.
-      // Ensure trailing slash for consistency with Django's APPEND_SLASH setting.
       const response = await axios.post(`${API}/auth/register/`, { 
         email, password, name, role
       });
-      // Destructure access_token and user data from the response
       const { access_token, user: userData } = response.data;
       
-      // Store the token in local storage
       localStorage.setItem('token', access_token);
-      setToken(access_token); // Update token state, which triggers fetchUser via useEffect
-      setUser(userData); // Immediately set user data
-      // Set the Authorization header for all subsequent Axios requests
+      setToken(access_token);
+      setUser(userData);
       axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
       
-      return { success: true }; // Indicate success
+      return { success: true };
     } catch (error) {
-      // Handle registration errors
       console.error("Registration error:", error.response?.data || error.message);
       return { success: false, error: error.response?.data?.detail || 'Registration failed' };
     } finally {
-      setLoading(false); // Reset loading state
+      setLoading(false);
     }
   };
 
   const logout = () => {
-    localStorage.removeItem('token'); // Remove token from local storage
-    setToken(null); // Clear token state
-    setUser(null); // Clear user state
-    // Remove the Authorization header from Axios defaults
+    localStorage.removeItem('token');
+    setToken(null);
+    setUser(null);
     delete axios.defaults.headers.common['Authorization'];
   };
 
   return (
-    // Provide auth context values to children components
     <AuthContext.Provider value={{ user, login, register, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-// Custom hook to easily access auth context values
 const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -125,11 +442,6 @@ const useAuth = () => {
   }
   return context;
 };
-
-// Header Component
-// App.js (snippet)
-
-// ... (other imports and code) ...
 
 // Header Component
 const Header = () => {
@@ -146,10 +458,10 @@ const Header = () => {
             <h1 className="text-2xl font-bold text-gray-900">Mealy</h1>
           </div>
           
-          {user && ( // Only show logout and user info if a user is logged in
+          {user && (
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">
-                Hello, {user.name} {/* REMOVED: ({user.role}) */}
+                Hello, {user.name}
               </span>
               <button
                 onClick={logout}
@@ -165,23 +477,34 @@ const Header = () => {
   );
 };
 
-// ... (rest of your App.js code) ...
-
 // Login/Registration Form Component
 const LoginForm = () => {
   const { login, register, loading } = useAuth();
-  const [isLogin, setIsLogin] = useState(true); // Toggle between login and register forms
+  const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     name: '',
-    role: 'customer' // Default role for registration
+    role: 'customer'
   });
-  const [error, setError] = useState(''); // State for displaying errors
+  const [error, setError] = useState('');
+  const [showLoader, setShowLoader] = useState(false);
+
+  useEffect(() => {
+    let timer;
+    if (loading) {
+      timer = setTimeout(() => {
+        setShowLoader(true);
+      }, 500);
+    } else {
+      setShowLoader(false);
+    }
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(''); // Clear previous errors on new submission
+    setError('');
 
     let result;
     if (isLogin) {
@@ -191,7 +514,7 @@ const LoginForm = () => {
     }
 
     if (!result.success) {
-      setError(result.error); // Set error message if login/register failed
+      setError(result.error);
     }
   };
 
@@ -211,87 +534,93 @@ const LoginForm = () => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {error && ( // Display error message if present
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                {error}
-              </div>
-            )}
+          {showLoader ? (
+            <div className="flex justify-center items-center h-64">
+              <MagicLoader size={100} particleCount={2} speed={1} hueRange={[20, 60]} />
+            </div>
+          ) : (
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                  {error}
+                </div>
+              )}
 
-            {!isLogin && ( // Name field only for registration
+              {!isLogin && (
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
+                  <input
+                    id="name"
+                    type="text"
+                    required
+                    className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
+                    placeholder="Enter your name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  />
+                </div>
+              )}
+
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
                 <input
-                  id="name"
-                  type="text"
+                  id="email"
+                  type="email"
                   required
                   className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
-                  placeholder="Enter your name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  placeholder="Enter your email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
                 />
               </div>
-            )}
 
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
-              <input
-                id="email"
-                type="email"
-                required
-                className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
-                placeholder="Enter your email"
-                value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
-              <input
-                id="password"
-                type="password"
-                required
-                className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
-                placeholder="Enter your password"
-                value={formData.password}
-                onChange={(e) => setFormData({...formData, password: e.target.value})}
-              />
-            </div>
-
-            {!isLogin && ( // Role selection only for registration
               <div>
-                <label htmlFor="role" className="block text-sm font-medium text-gray-700">Account Type</label>
-                <select
-                  id="role"
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm"
-                  value={formData.role}
-                  onChange={(e) => setFormData({...formData, role: e.target.value})}
-                >
-                  <option value="customer">Customer</option>
-                  <option value="admin">Admin/Caterer</option>
-                </select>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+                <input
+                  id="password"
+                  type="password"
+                  required
+                  className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
+                  placeholder="Enter your password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({...formData, password: e.target.value})}
+                />
               </div>
-            )}
 
-            <button
-              type="submit"
-              disabled={loading} // Disable button while loading
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50"
-            >
-              {loading ? 'Processing...' : (isLogin ? 'Sign In' : 'Sign Up')}
-            </button>
+              {!isLogin && (
+                <div>
+                  <label htmlFor="role" className="block text-sm font-medium text-gray-700">Account Type</label>
+                  <select
+                    id="role"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm"
+                    value={formData.role}
+                    onChange={(e) => setFormData({...formData, role: e.target.value})}
+                  >
+                    <option value="customer">Customer</option>
+                    <option value="admin">Admin/Caterer</option>
+                  </select>
+                </div>
+              )}
 
-            <div className="text-center">
               <button
-                type="button"
-                className="font-medium text-orange-600 hover:text-orange-500"
-                onClick={() => setIsLogin(!isLogin)} // Toggle between login and register
+                type="submit"
+                disabled={loading}
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50"
               >
-                {isLogin ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
+                {loading ? 'Processing...' : (isLogin ? 'Sign In' : 'Sign Up')}
               </button>
-            </div>
-          </form>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  className="font-medium text-orange-600 hover:text-orange-500"
+                  onClick={() => setIsLogin(!isLogin)}
+                >
+                  {isLogin ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     </div>
@@ -303,20 +632,18 @@ const CustomerDashboard = () => {
   const { user } = useAuth();
   const [todaysMenu, setTodaysMenu] = useState([]);
   const [orders, setOrders] = useState([]);
-  const [activeTab, setActiveTab] = useState('menu'); // State for active dashboard tab
-  const [loading, setLoading] = useState(false); // Loading state for actions
+  const [activeTab, setActiveTab] = useState('menu');
+  const [loadingMeals, setLoadingMeals] = useState({}); // Per-meal loading state
 
   useEffect(() => {
-    // Fetch menu and orders when component mounts
     fetchTodaysMenu();
     fetchOrders();
   }, []);
 
   const fetchTodaysMenu = async () => {
     try {
-      // Fetch today's menu from backend. Ensure trailing slash.
       const response = await axios.get(`${API}/daily-menu/today/menu/`);
-      setTodaysMenu(response.data.meals || []); // Set menu meals, default to empty array
+      setTodaysMenu(response.data.meals || []);
     } catch (error) {
       console.error('Error fetching menu:', error);
     }
@@ -324,50 +651,65 @@ const CustomerDashboard = () => {
 
   const fetchOrders = async () => {
     try {
-      // Fetch user's orders from backend. Ensure trailing slash.
       const response = await axios.get(`${API}/orders/`);
-      setOrders(response.data); // Set orders
+      setOrders(response.data);
     } catch (error) {
       console.error('Error fetching orders:', error);
     }
   };
 
   const placeOrder = async (mealId) => {
-    setLoading(true);
+    setLoadingMeals(prev => ({ ...prev, [mealId]: true }));
     try {
-      // Place a new order. Ensure trailing slash.
-      await axios.post(`${API}/orders/`, { meal_id: mealId, quantity: 1 });
-      await fetchOrders(); // Refresh orders list after placing order
-      alert('Order placed successfully!'); // Use a custom modal/toast in production
+      // Ensure minimum loading time of 500ms
+      const [response] = await Promise.all([
+        axios.post(`${API}/orders/`, { meal_id: mealId, quantity: 1 }),
+        new Promise(resolve => setTimeout(resolve, 500))
+      ]);
+      await fetchOrders();
+      alert('Order placed successfully!');
     } catch (error) {
       alert('Error placing order: ' + (error.response?.data?.detail || 'Unknown error'));
     } finally {
-      setLoading(false);
+      setLoadingMeals(prev => ({ ...prev, [mealId]: false }));
     }
   };
 
   const processPayment = async (orderId) => {
     const phone = prompt('Enter your M-Pesa phone number (254XXXXXXXXX):');
-    if (!phone) return; // If user cancels prompt
+    if (!phone) return;
 
-    setLoading(true);
+    setLoadingMeals(prev => ({ ...prev, [orderId]: true }));
     try {
-      // Initiate M-Pesa payment. Ensure trailing slash.
-      const response = await axios.post(`${API}/payment/mpesa/`, { 
-        order_id: orderId,
-        phone: phone
-      });
+      const [response] = await Promise.all([
+        axios.post(`${API}/payment/mpesa/`, { 
+          order_id: orderId,
+          phone: phone
+        }),
+        new Promise(resolve => setTimeout(resolve, 500))
+      ]);
       
       if (response.data.success) {
         alert(`Payment successful! Transaction ID: ${response.data.transaction_id}`);
-        await fetchOrders(); // Refresh orders after successful payment
+        await fetchOrders();
       }
     } catch (error) {
       alert('Payment failed: ' + (error.response?.data?.detail || 'Unknown error'));
     } finally {
-      setLoading(false);
+      setLoadingMeals(prev => ({ ...prev, [orderId]: false }));
     }
   };
+
+  // Map todaysMenu to Carousel3D items
+  const carouselItems = todaysMenu.map((meal) => ({
+    id: meal.id,
+    title: meal.name,
+    brand: meal.category || "Mealy Special",
+    description: meal.description,
+    tags: [meal.category || "Special", `KSh ${meal.price}`],
+    imageUrl: meal.image_url || "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d",
+    isLoading: loadingMeals[meal.id] || false
+  }));
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -376,7 +718,6 @@ const CustomerDashboard = () => {
         <p className="text-gray-600">What would you like to eat today?</p>
       </div>
 
-      {/* Navigation Tabs */}
       <div className="mb-6">
         <nav className="flex space-x-8">
           <button
@@ -402,7 +743,7 @@ const CustomerDashboard = () => {
         </nav>
       </div>
 
-      {activeTab === 'menu' && ( // Today's Menu Section
+      {activeTab === 'menu' && (
         <div>
           {todaysMenu.length === 0 ? (
             <div className="text-center py-12">
@@ -413,42 +754,19 @@ const CustomerDashboard = () => {
               <p className="text-gray-500">Check back later or contact your caterer.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {todaysMenu.map((meal) => (
-                <div key={meal.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-                  <div className="h-48 bg-gray-200 flex items-center justify-center">
-                    {meal.image_url ? (
-                      <img 
-                        src={meal.image_url} 
-                        alt={meal.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-6xl">🍽️</span>
-                    )}
-                  </div>
-                  <div className="p-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">{meal.name}</h3>
-                    <p className="text-gray-600 mb-4">{meal.description}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold text-orange-600">KSh {meal.price}</span>
-                      <button
-                        onClick={() => placeOrder(meal.id)}
-                        disabled={loading}
-                        className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-medium disabled:opacity-50"
-                      >
-                        Order Now
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <Carousel3D
+              items={carouselItems}
+              cardHeight={450}
+              autoRotate={true}
+              rotateInterval={4000}
+              isMobileSwipe={true}
+              placeOrder={placeOrder}
+            />
           )}
         </div>
       )}
 
-      {activeTab === 'orders' && ( // My Orders Section
+      {activeTab === 'orders' && (
         <div>
           {orders.length === 0 ? (
             <div className="text-center py-12">
@@ -483,10 +801,17 @@ const CustomerDashboard = () => {
                         {order.payment_status === 'pending' && (
                           <button
                             onClick={() => processPayment(order.id)}
-                            disabled={loading}
+                            disabled={loadingMeals[order.id] || false}
                             className="bg-green-500 hover:bg-green-600 text-white px-4 py-1 rounded-md text-sm font-medium disabled:opacity-50"
                           >
-                            Pay Now
+                            {loadingMeals[order.id] ? (
+                              <div className="flex items-center space-x-2">
+                                <MagicLoader size={16} particleCount={1} speed={1} hueRange={[160, 200]} />
+                                <span>Processing...</span>
+                              </div>
+                            ) : (
+                              <span>Pay Now</span>
+                            )}
                           </button>
                         )}
                       </div>
@@ -521,7 +846,6 @@ const AdminDashboard = () => {
   const [menuDate, setMenuDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
-    // Fetch data for admin dashboard when component mounts
     fetchMeals();
     fetchOrders();
     fetchDailyRevenue();
@@ -529,7 +853,6 @@ const AdminDashboard = () => {
 
   const fetchMeals = async () => {
     try {
-      // Fetch all meals. Ensure trailing slash.
       const response = await axios.get(`${API}/meals/`);
       setMeals(response.data);
     } catch (error) {
@@ -539,7 +862,6 @@ const AdminDashboard = () => {
 
   const fetchOrders = async () => {
     try {
-      // Fetch all orders. Ensure trailing slash.
       const response = await axios.get(`${API}/orders/`);
       setOrders(response.data);
     } catch (error) {
@@ -549,7 +871,6 @@ const AdminDashboard = () => {
 
   const fetchDailyRevenue = async () => {
     try {
-      // Fetch today's revenue. Ensure trailing slash.
       const response = await axios.get(`${API}/orders/today/revenue/`);
       setDailyRevenue(response.data);
     } catch (error) {
@@ -561,13 +882,12 @@ const AdminDashboard = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      // Create a new meal. Ensure trailing slash.
       await axios.post(`${API}/meals/`, { 
         ...mealForm,
-        price: parseFloat(mealForm.price) // Ensure price is a number
+        price: parseFloat(mealForm.price)
       });
-      setMealForm({ name: '', description: '', price: '', category: '', image_url: '' }); // Clear form
-      await fetchMeals(); // Refresh meals list
+      setMealForm({ name: '', description: '', price: '', category: '', image_url: '' });
+      await fetchMeals();
       alert('Meal created successfully!');
     } catch (error) {
       alert('Error creating meal: ' + (error.response?.data?.detail || 'Unknown error'));
@@ -584,12 +904,11 @@ const AdminDashboard = () => {
 
     setLoading(true);
     try {
-      // Create a daily menu. Ensure trailing slash.
       await axios.post(`${API}/daily-menu/`, { 
         date: menuDate,
         meal_ids: selectedMealsForMenu
       });
-      setSelectedMealsForMenu([]); // Clear selected meals
+      setSelectedMealsForMenu([]);
       alert('Daily menu created successfully!');
     } catch (error) {
       alert('Error creating menu: ' + (error.response?.data?.detail || 'Unknown error'));
@@ -601,12 +920,11 @@ const AdminDashboard = () => {
   const toggleMealSelection = (mealId) => {
     setSelectedMealsForMenu(prev => 
       prev.includes(mealId) 
-        ? prev.filter(id => id !== mealId) // Remove if already selected
-        : [...prev, mealId] // Add if not selected
+        ? prev.filter(id => id !== mealId)
+        : [...prev, mealId]
     );
   };
 
-  // Default food images for different categories
   const getDefaultImage = (category) => {
     const images = {
       'Main Course': 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwyfHxkZWxpY2lvdXMlMjBmb29kfGVufDB8fHx8MTc1MzIxMjUzN3ww&ixlib=rb-4.1.0&q=85',
@@ -624,7 +942,6 @@ const AdminDashboard = () => {
         <p className="text-gray-600">Manage your restaurant operations</p>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center">
@@ -661,7 +978,6 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
       <div className="mb-6">
         <nav className="flex space-x-8">
           {[
@@ -684,10 +1000,8 @@ const AdminDashboard = () => {
         </nav>
       </div>
 
-      {/* Meals Management */}
       {activeTab === 'meals' && (
         <div className="space-y-8">
-          {/* Add New Meal Form */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Add New Meal</h3>
             <form onSubmit={handleMealSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -762,7 +1076,6 @@ const AdminDashboard = () => {
             </form>
           </div>
 
-          {/* Meals List */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {meals.map((meal) => (
               <div key={meal.id} className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -793,7 +1106,6 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* Daily Menu Management */}
       {activeTab === 'menu' && (
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Create Daily Menu</h3>
@@ -865,7 +1177,6 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* Orders Management */}
       {activeTab === 'orders' && (
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
@@ -900,7 +1211,6 @@ const AdminDashboard = () => {
                       <div className="text-sm text-gray-500">Qty: {order.quantity}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {/* Safely convert customer_id to string and then slice */}
                       Customer ID: {order.customer_id ? String(order.customer_id).slice(0, 8) + '...' : 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
