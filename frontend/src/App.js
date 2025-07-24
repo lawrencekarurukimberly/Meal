@@ -900,7 +900,8 @@ const AdminDashboard = () => {
                       <div className="text-sm text-gray-500">Qty: {order.quantity}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      Customer ID: {order.customer_id.slice(0, 8)}...
+                      {/* Safely convert customer_id to string and then slice */}
+                      Customer ID: {order.customer_id ? String(order.customer_id).slice(0, 8) + '...' : 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {order.date}
