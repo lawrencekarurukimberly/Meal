@@ -174,9 +174,50 @@ def register_view(request):
         return JsonResponse({'error': 'Only POST requests are allowed for registration'}, status=405)
 
 
-# --- UPDATED meals_list_create_view TO USE DATABASE ---
 @csrf_exempt
-@login_required # Protect this view: only authenticated users can access
+@login_required
+def cancel_order_view(request, order_id):
+    """
+    Handles POST for a customer to cancel their own order.
+    """
+    if request.method == "POST":
+        try:
+            order = Order.objects.get(id=order_id, user=request.user)
+
+            # Check if the order can be cancelled
+            if order.status != "pending" or order.payment_status != "pending":
+                return JsonResponse(
+                    {
+                        "error": "Order cannot be cancelled. It might have been already processed or paid."
+                    },
+                    status=400,
+                )
+
+            # Update order status to 'cancelled'
+            order.status = "cancelled"
+            order.save()
+
+            print(f"Order {order.id} cancelled by user {request.user.email}.")
+            return JsonResponse(
+                {"message": "Order cancelled successfully"}, status=200
+            )
+
+        except Order.DoesNotExist:
+            return JsonResponse(
+                {"error": "Order not found or you do not have permission to cancel it."},
+                status=404,
+            )
+        except Exception as e:
+            print(f"Error cancelling order: {e}")
+            return JsonResponse(
+                {"error": f"Failed to cancel order: {str(e)}"}, status=500
+            )
+
+    return JsonResponse({"error": "Method not allowed"}, status=405)
+
+
+@csrf_exempt
+@login_required
 def meals_list_create_view(request):
     """
     Handles GET for listing meals from the database and POST for creating a new meal in the database.
@@ -223,6 +264,28 @@ def meals_list_create_view(request):
             return JsonResponse({'error': f'Failed to create meal: {str(e)}'}, status=500)
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@csrf_exempt
+@login_required
+def meal_detail_view(request, meal_id):
+    if not request.user.is_staff:
+        return JsonResponse(
+            {"error": "Permission denied. Only administrators can manage meals."},
+            status=403,
+        )
+
+    try:
+        meal = Meal.objects.get(pk=meal_id)
+    except Meal.DoesNotExist:
+        return JsonResponse({"error": "Meal not found"}, status=404)
+
+    if request.method == "DELETE":
+        meal.delete()
+        return JsonResponse({"message": "Meal deleted successfully"}, status=200)
+
+    return JsonResponse({"error": "Method not allowed"}, status=405)
+
 
 
 @csrf_exempt

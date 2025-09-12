@@ -13,11 +13,13 @@ urlpatterns = [
 
     # Meal and Menu URLs
     path('meals/', views.meals_list_create_view, name='meals_list_create'),
+    path('meals/<int:meal_id>/', views.meal_detail_view, name='meal_detail'),
     path('daily-menu/', views.daily_menu_view, name='daily_menu_create'),
     path('daily-menu/today/menu/', views.daily_menu_view, name='daily_menu_today'), # For GET today's menu
 
     # Order and Payment URLs
     path('orders/', views.orders_list_create_view, name='orders_list_create'),
     path('orders/today/revenue/', views.daily_revenue_view, name='daily_revenue'),
+    path('orders/<int:order_id>/cancel/', views.cancel_order_view, name='cancel_order'),
     path('payment/mpesa/', views.mpesa_payment_view, name='mpesa_payment'),
 ]

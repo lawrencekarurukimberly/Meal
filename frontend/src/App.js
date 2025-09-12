@@ -49,7 +49,7 @@ const MagicLoader = ({
   const drawParticle = useCallback((ctx, particle, index, tick) => {
     const hue = hueRange[0] + ((tick + (particle.life * 120)) % (hueRange[1] - hueRange[0]));
     ctx.fillStyle = ctx.strokeStyle = `hsla(${hue}, 100%, 60%, ${particle.life})`;
-    
+
     ctx.beginPath();
     if (particlesRef.current[index - 1]) {
       ctx.moveTo(particle.x, particle.y);
@@ -112,7 +112,7 @@ const MagicLoader = ({
     canvas.height = size * dpr;
     canvas.style.width = `${size}px`;
     canvas.style.height = `${size}px`;
-    
+
     ctx.scale(dpr, dpr);
     ctx.globalCompositeOperation = 'lighter';
 
@@ -330,9 +330,8 @@ const Carousel3D = ({
             {items.map((_, idx) => (
               <button
                 key={idx}
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                  active === idx ? "bg-gray-500 w-5" : "bg-gray-200 hover:bg-gray-300"
-                }`}
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${active === idx ? "bg-gray-500 w-5" : "bg-gray-200 hover:bg-gray-300"
+                  }`}
                 onClick={() => setActive(idx)}
                 aria-label={`Go to item ${idx + 1}`}
               />
@@ -344,9 +343,7 @@ const Carousel3D = ({
   );
 };
 
-// Ensure BACKEND_URL is correctly set in your environment
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
-const API = `${BACKEND_URL}/api`;
+const API = '/api';
 
 // Configure Axios to send cookies with cross-origin requests
 axios.defaults.withCredentials = true;
@@ -384,12 +381,12 @@ const AuthProvider = ({ children }) => {
     try {
       const response = await axios.post(`${API}/auth/login/`, { email, password });
       const { access_token, user: userData } = response.data;
-      
+
       localStorage.setItem('token', access_token);
       setToken(access_token);
       setUser(userData);
       axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-      
+
       return { success: true };
     } catch (error) {
       console.error("Login error:", error.response?.data || error.message);
@@ -402,16 +399,16 @@ const AuthProvider = ({ children }) => {
   const register = async (email, password, name, role = 'customer') => {
     setLoading(true);
     try {
-      const response = await axios.post(`${API}/auth/register/`, { 
+      const response = await axios.post(`${API}/auth/register/`, {
         email, password, name, role
       });
       const { access_token, user: userData } = response.data;
-      
+
       localStorage.setItem('token', access_token);
       setToken(access_token);
       setUser(userData);
       axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-      
+
       return { success: true };
     } catch (error) {
       console.error("Registration error:", error.response?.data || error.message);
@@ -453,11 +450,11 @@ const Header = () => {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">🍽️</span>
+              <span className="text-white font-bold text-lg">🐔</span>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">Mealy</h1>
+            <h1 className="text-2xl font-bold text-gray-900">FarmFresh</h1>
           </div>
-          
+
           <div className="flex items-center space-x-4">
             {user ? (
               <>
@@ -530,13 +527,13 @@ const LoginForm = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <div className="mx-auto w-20 h-20 bg-orange-500 rounded-full flex items-center justify-center">
-            <span className="text-white text-3xl">🍽️</span>
+            <span className="text-white text-3xl">🐔</span>
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            {isLogin ? 'Sign In to Mealy' : 'Join Mealy Today'}
+            {isLogin ? 'Sign In to FarmFresh' : 'Join FarmFresh Today'}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Your favorite food ordering platform
+            Your trusted source for farm-fresh poultry
           </p>
         </div>
 
@@ -564,7 +561,7 @@ const LoginForm = () => {
                       className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
                       placeholder="Enter your name"
                       value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     />
                   </div>
                 )}
@@ -578,7 +575,7 @@ const LoginForm = () => {
                     className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
                     placeholder="Enter your email"
                     value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   />
                 </div>
 
@@ -591,7 +588,7 @@ const LoginForm = () => {
                     className="mt-1 appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm"
                     placeholder="Enter your password"
                     value={formData.password}
-                    onChange={(e) => setFormData({...formData, password: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   />
                 </div>
 
@@ -602,10 +599,10 @@ const LoginForm = () => {
                       id="role"
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm"
                       value={formData.role}
-                      onChange={(e) => setFormData({...formData, role: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                     >
                       <option value="customer">Customer</option>
-                      <option value="admin">Admin/Caterer</option>
+                      <option value="admin">Admin/Farmer</option>
                     </select>
                   </div>
                 )}
@@ -683,35 +680,28 @@ const CustomerDashboard = () => {
     }
   };
 
-  const processPayment = async (orderId) => {
-    const phone = prompt('Enter your M-Pesa phone number (254XXXXXXXXX):');
-    if (!phone) return;
+  const cancelOrder = async (orderId) => {
+    if (!window.confirm("Are you sure you want to cancel this order?")) return;
 
-    setLoadingMeals(prev => ({ ...prev, [orderId]: true }));
+    setLoadingMeals((prev) => ({ ...prev, [orderId]: true }));
     try {
-      const [response] = await Promise.all([
-        axios.post(`${API}/payment/mpesa/`, { 
-          order_id: orderId,
-          phone: phone
-        }),
-        new Promise(resolve => setTimeout(resolve, 500))
-      ]);
-      
-      if (response.data.success) {
-        alert(`Payment successful! Transaction ID: ${response.data.transaction_id}`);
-        await fetchOrders();
-      }
+      await axios.post(`${API}/orders/${orderId}/cancel/`);
+      await fetchOrders();
+      alert("Order cancelled successfully!");
     } catch (error) {
-      alert('Payment failed: ' + (error.response?.data?.detail || 'Unknown error'));
+      alert(
+        "Error cancelling order: " +
+          (error.response?.data?.error || "Unknown error")
+      );
     } finally {
-      setLoadingMeals(prev => ({ ...prev, [orderId]: false }));
+      setLoadingMeals((prev) => ({ ...prev, [orderId]: false }));
     }
   };
 
   const carouselItems = todaysMenu.map((meal) => ({
     id: meal.id,
     title: meal.name,
-    brand: meal.category || "Mealy Special",
+    brand: meal.category || "FarmFresh Special",
     description: meal.description,
     tags: [meal.category || "Special", `KSh ${meal.price}`],
     imageUrl: meal.image_url || "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d",
@@ -729,21 +719,19 @@ const CustomerDashboard = () => {
         <nav className="flex space-x-8">
           <button
             onClick={() => setActiveTab('menu')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'menu'
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'menu'
                 ? 'border-orange-500 text-orange-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+              }`}
           >
             Today's Menu
           </button>
           <button
             onClick={() => setActiveTab('orders')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'orders'
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'orders'
                 ? 'border-orange-500 text-orange-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+              }`}
           >
             My Orders ({orders.length})
           </button>
@@ -755,10 +743,10 @@ const CustomerDashboard = () => {
           {todaysMenu.length === 0 ? (
             <div className="text-center py-12">
               <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                <span className="text-gray-400 text-2xl">🍽️</span>
+                <span className="text-gray-400 text-2xl">🐔</span>
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">No menu available today</h3>
-              <p className="text-gray-500">Check back later or contact your caterer.</p>
+              <p className="text-gray-500">Check back later or contact your farmer.</p>
             </div>
           ) : (
             <Carousel3D
@@ -796,16 +784,31 @@ const CustomerDashboard = () => {
                     <div className="text-right">
                       <div className="text-2xl font-bold text-orange-600 mb-2">KSh {order.total}</div>
                       <div className="flex items-center space-x-2">
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          order.status === 'confirmed' 
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${order.status === 'confirmed'
                             ? 'bg-green-100 text-green-800'
                             : order.status === 'pending'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
                           {order.status}
                         </span>
-                        {order.payment_status === 'pending' && (
+                        {order.status === 'pending' && order.payment_status === 'pending' && (
+                          <button
+                            onClick={() => cancelOrder(order.id)}
+                            disabled={loadingMeals[order.id] || false}
+                            className="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded-md text-sm font-medium disabled:opacity-50"
+                          >
+                            {loadingMeals[order.id] ? (
+                              <div className="flex items-center space-x-2">
+                                <MagicLoader size={16} particleCount={1} speed={1} hueRange={[0, 40]} />
+                                <span>Cancelling...</span>
+                              </div>
+                            ) : (
+                              <span>Cancel</span>
+                            )}
+                          </button>
+                        )}
+                        {order.payment_status === 'pending' && order.status !== 'cancelled' && (
                           <button
                             onClick={() => processPayment(order.id)}
                             disabled={loadingMeals[order.id] || false}
@@ -889,7 +892,7 @@ const AdminDashboard = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post(`${API}/meals/`, { 
+      await axios.post(`${API}/meals/`, {
         ...mealForm,
         price: parseFloat(mealForm.price)
       });
@@ -911,7 +914,7 @@ const AdminDashboard = () => {
 
     setLoading(true);
     try {
-      await axios.post(`${API}/daily-menu/`, { 
+      await axios.post(`${API}/daily-menu/`, {
         date: menuDate,
         meal_ids: selectedMealsForMenu
       });
@@ -924,18 +927,28 @@ const AdminDashboard = () => {
     }
   };
 
-  const toggleMealSelection = (mealId) => {
-    setSelectedMealsForMenu(prev => 
-      prev.includes(mealId) 
-        ? prev.filter(id => id !== mealId)
-        : [...prev, mealId]
-    );
+  const deleteMeal = async (mealId) => {
+    if (!window.confirm("Are you sure you want to delete this meal?")) return;
+
+    setLoading(true);
+    try {
+      await axios.delete(`${API}/meals/${mealId}/`);
+      await fetchMeals();
+      alert("Meal deleted successfully!");
+    } catch (error) {
+      alert(
+        "Error deleting meal: " +
+          (error.response?.data?.detail || "Unknown error")
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getDefaultImage = (category) => {
     const images = {
       'Main Course': 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwyfHxkZWxpY2lvdXMlMjBmb29kfGVufDB8fHx8MTc1MzIxMjUzN3ww&ixlib=rb-4.1.0&q=85',
-      'Burger': 'https://images.unsplash.com/photo-1600555379885-08a02224726d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHxyZXN0YXVyYW50JTIwbWVhbHN8ZW58MHx8fHwxNzUzMjEyNTU5fDA&ixlib=rb-4.1.0&q=85',
+      'Chicken': 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHxyZXN0YXVyYW50JTIwbWVhbHN8ZW58MHx8fHwxNzUzMjEyNTU5fDA&ixlib=rb-4.1.0&q=85',
       'Dessert': 'https://images.unsplash.com/photo-1551024601-bec78aea704b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwxfHxkZWxpY2lvdXMlMjBmb29kfGVufDB8fHx8MTc1MzIxMjUzN3ww&ixlib=rb-4.1.0&q=85',
       'default': 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwyfHxkZWxpY2lvdXMlMjBmb29kfGVufDB8fHx8MTc1MzIxMjUzN3ww&ixlib=rb-4.1.0&q=85'
     };
@@ -945,8 +958,8 @@ const AdminDashboard = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
       <div className="mb-8">
-        <h2 className="text-3xl font-bold text-gray-900">Admin Dashboard</h2>
-        <p className="text-gray-600">Manage your restaurant operations</p>
+        <h2 className="text-3xl font-bold text-gray-900">Farmer Dashboard</h2>
+        <p className="text-gray-600">Manage your poultry supply operations</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -975,7 +988,7 @@ const AdminDashboard = () => {
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center">
             <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <span className="text-purple-600 text-xl">🍽️</span>
+              <span className="text-purple-600 text-xl">🐔</span>
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Meals</p>
@@ -995,11 +1008,10 @@ const AdminDashboard = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === tab.id
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === tab.id
                   ? 'border-orange-500 text-orange-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                }`}
             >
               {tab.label} {tab.count && `(${tab.count})`}
             </button>
@@ -1020,7 +1032,7 @@ const AdminDashboard = () => {
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                   value={mealForm.name}
-                  onChange={(e) => setMealForm({...mealForm, name: e.target.value})}
+                  onChange={(e) => setMealForm({ ...mealForm, name: e.target.value })}
                 />
               </div>
               <div>
@@ -1029,11 +1041,11 @@ const AdminDashboard = () => {
                   id="mealCategory"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                   value={mealForm.category}
-                  onChange={(e) => setMealForm({...mealForm, category: e.target.value, image_url: getDefaultImage(e.target.value)})}
+                  onChange={(e) => setMealForm({ ...mealForm, category: e.target.value, image_url: getDefaultImage(e.target.value) })}
                 >
                   <option value="">Select Category</option>
                   <option value="Main Course">Main Course</option>
-                  <option value="Burger">Burger</option>
+                  <option value="Chicken">Chicken</option>
                   <option value="Dessert">Dessert</option>
                   <option value="Beverage">Beverage</option>
                 </select>
@@ -1047,7 +1059,7 @@ const AdminDashboard = () => {
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                   value={mealForm.price}
-                  onChange={(e) => setMealForm({...mealForm, price: e.target.value})}
+                  onChange={(e) => setMealForm({ ...mealForm, price: e.target.value })}
                 />
               </div>
               <div>
@@ -1057,7 +1069,7 @@ const AdminDashboard = () => {
                   type="url"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                   value={mealForm.image_url}
-                  onChange={(e) => setMealForm({...mealForm, image_url: e.target.value})}
+                  onChange={(e) => setMealForm({ ...mealForm, image_url: e.target.value })}
                 />
               </div>
               <div className="md:col-span-2">
@@ -1068,7 +1080,7 @@ const AdminDashboard = () => {
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                   value={mealForm.description}
-                  onChange={(e) => setMealForm({...mealForm, description: e.target.value})}
+                  onChange={(e) => setMealForm({ ...mealForm, description: e.target.value })}
                 />
               </div>
               <div className="md:col-span-2">
@@ -1088,13 +1100,13 @@ const AdminDashboard = () => {
               <div key={meal.id} className="bg-white rounded-lg shadow-md overflow-hidden">
                 <div className="h-48 bg-gray-200 flex items-center justify-center">
                   {meal.image_url ? (
-                    <img 
-                      src={meal.image_url} 
+                    <img
+                      src={meal.image_url}
                       alt={meal.name}
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <span className="text-6xl">🍽️</span>
+                    <span className="text-6xl">🐔</span>
                   )}
                 </div>
                 <div className="p-4">
@@ -1106,6 +1118,12 @@ const AdminDashboard = () => {
                   </div>
                   <p className="text-gray-600 text-sm mb-3">{meal.description}</p>
                   <div className="text-xl font-bold text-orange-600">KSh {meal.price}</div>
+                  <button
+                    onClick={() => deleteMeal(meal.id)}
+                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded-md text-sm font-medium disabled:opacity-50 mt-2"
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
             ))}
@@ -1116,7 +1134,7 @@ const AdminDashboard = () => {
       {activeTab === 'menu' && (
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Create Daily Menu</h3>
-          
+
           <div className="mb-6">
             <label htmlFor="menuDate" className="block text-sm font-medium text-gray-700 mb-2">Menu Date</label>
             <input
@@ -1136,34 +1154,32 @@ const AdminDashboard = () => {
               {meals.map((meal) => (
                 <div
                   key={meal.id}
-                  className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
-                    selectedMealsForMenu.includes(meal.id)
+                  className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${selectedMealsForMenu.includes(meal.id)
                       ? 'border-orange-500 bg-orange-50'
                       : 'border-gray-200 hover:border-orange-300'
-                  }`}
+                    }`}
                   onClick={() => toggleMealSelection(meal.id)}
                 >
                   <div className="flex items-center space-x-3">
                     <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
                       {meal.image_url ? (
-                        <img 
-                          src={meal.image_url} 
+                        <img
+                          src={meal.image_url}
                           alt={meal.name}
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <span className="text-lg">🍽️</span>
+                        <span className="text-lg">🐔</span>
                       )}
                     </div>
                     <div className="flex-1">
                       <h5 className="font-medium text-gray-900">{meal.name}</h5>
                       <p className="text-sm text-gray-600">KSh {meal.price}</p>
                     </div>
-                    <div className={`w-5 h-5 rounded border-2 ${
-                      selectedMealsForMenu.includes(meal.id)
+                    <div className={`w-5 h-5 rounded border-2 ${selectedMealsForMenu.includes(meal.id)
                         ? 'bg-orange-500 border-orange-500'
                         : 'border-gray-300'
-                    }`}>
+                      }`}>
                       {selectedMealsForMenu.includes(meal.id) && (
                         <span className="text-white text-xs">✓</span>
                       )}
@@ -1224,11 +1240,10 @@ const AdminDashboard = () => {
                       {order.date}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        order.payment_status === 'completed'
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${order.payment_status === 'completed'
                           ? 'bg-green-100 text-green-800'
                           : 'bg-yellow-100 text-yellow-800'
-                      }`}>
+                        }`}>
                         {order.payment_status === 'completed' ? 'Paid' : 'Pending Payment'}
                       </span>
                     </td>
@@ -1252,18 +1267,18 @@ const LandingPage = () => {
     {
       id: 1,
       title: "Grilled Chicken Supreme",
-      brand: "Main Course",
-      description: "Juicy grilled chicken breast served with herb-roasted vegetables and creamy mashed potatoes.",
-      tags: ["Main Course", "KSh 1200"],
+      brand: "Chicken",
+      description: "Juicy grilled chicken breast from our farm, served with herb-roasted vegetables and creamy mashed potatoes.",
+      tags: ["Chicken", "KSh 1200"],
       imageUrl: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d",
       isLoading: false
     },
     {
       id: 2,
-      title: "Classic Cheeseburger",
-      brand: "Burger",
-      description: "A delicious beef patty with melted cheddar, fresh lettuce, tomato, and our special sauce.",
-      tags: ["Burger", "KSh 800"],
+      title: "Farm-Fresh Chicken Burger",
+      brand: "Chicken",
+      description: "A delicious chicken patty from our farm with melted cheddar, fresh lettuce, tomato, and our special sauce.",
+      tags: ["Chicken", "KSh 800"],
       imageUrl: "https://images.unsplash.com/photo-1600555379885-08a02224726d",
       isLoading: false
     },
@@ -1284,8 +1299,8 @@ const LandingPage = () => {
       <section className="bg-orange-500 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex flex-col md:flex-row items-center">
           <div className="md:w-1/2 mb-8 md:mb-0">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Discover Delicious Meals with Mealy</h1>
-            <p className="text-lg mb-6">Order from a curated selection of fresh, flavorful dishes delivered right to your door.</p>
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">Discover Farm-Fresh Poultry with FarmFresh</h1>
+            <p className="text-lg mb-6">Order from a curated selection of fresh, flavorful chicken dishes delivered right to your door.</p>
             <button
               className="bg-white text-orange-500 px-6 py-3 rounded-md font-medium hover:bg-gray-100 transition-colors"
               onClick={() => document.getElementById('auth-section').scrollIntoView({ behavior: 'smooth' })}
@@ -1295,8 +1310,8 @@ const LandingPage = () => {
           </div>
           <div className="md:w-1/2">
             <img
-              src="https://images.unsplash.com/photo-1600891964599-f61ba0e24092"
-              alt="Delicious meal"
+              src="https://images.unsplash.com/photo-1604908176997-125f25cc6f3d"
+              alt="Farm-fresh chicken meal"
               className="w-full h-auto rounded-lg shadow-lg"
             />
           </div>
@@ -1306,14 +1321,14 @@ const LandingPage = () => {
       {/* Features Section */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">Why Choose Mealy?</h2>
+          <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">Why Choose FarmFresh?</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center">
               <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">🍴</span>
+                <span className="text-2xl">🐔</span>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Curated Menus</h3>
-              <p className="text-gray-600">Daily menus crafted with fresh ingredients from top local restaurants.</p>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Farm-Fresh Poultry</h3>
+              <p className="text-gray-600">Daily menus crafted with fresh chicken from our farm, supplied to top hotels.</p>
             </div>
             <div className="text-center">
               <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -1355,11 +1370,11 @@ const LandingPage = () => {
             <div className="mb-4 md:mb-0">
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">🍽️</span>
+                  <span className="text-white font-bold text-lg">🐔</span>
                 </div>
-                <h1 className="text-2xl font-bold">Mealy</h1>
+                <h1 className="text-2xl font-bold">FarmFresh</h1>
               </div>
-              <p className="text-sm mt-2">Your favorite food ordering platform</p>
+              <p className="text-sm mt-2">Your trusted source for farm-fresh poultry</p>
             </div>
             <div className="flex space-x-6">
               <a href="#" className="text-gray-400 hover:text-white">About</a>
